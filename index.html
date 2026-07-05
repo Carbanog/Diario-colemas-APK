@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Colmenar Zeta — Bitácora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="xlsx.full.min.js"></script>
+<script src="jszip.min.js"></script>
+<script src="sql-wasm.js"></script>
+<script src="local-backend.js"></script>
+<style>
+  :root{
+    --cream:#FBF3E1; --cream-2:#F3E6C6; --amber:#E3A63A; --amber-dark:#C4842A;
+    --walnut:#3A2718; --walnut-soft:#6B5642; --olive:#707A3E; --rust:#B4472C; --white:#FFFDF8; --radius:14px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:var(--cream); color:var(--walnut); font-family:'Inter',sans-serif; padding-bottom:84px; min-height:100vh;}
+  h1,h2,h3{font-family:'Fraunces',serif; margin:0;}
+  header{background:linear-gradient(135deg,var(--walnut) 0%, #2A1B10 100%); color:var(--cream); padding:22px 20px 26px; position:relative; overflow:hidden;}
+  header .hexrow{position:absolute; top:-10px; right:-10px; opacity:.15; font-size:80px; line-height:.8;}
+  header h1{font-size:26px; font-weight:600; letter-spacing:.3px; display:flex; align-items:center; gap:8px;}
+  .settings-btn{position:absolute; top:18px; right:18px; width:38px; height:38px; border-radius:50%; border:none; background:rgba(255,255,255,.14); color:var(--cream); font-size:18px; z-index:2; -webkit-appearance:none; appearance:none;}
+  header p{margin:4px 0 0; font-size:13px; color:#D8C3A0; font-weight:500;}
+  nav.tabs{position:fixed; bottom:0; left:0; right:0; z-index:20; background:var(--white); border-top:1px solid #E9DCC0; display:flex; box-shadow:0 -4px 16px rgba(58,39,24,.08);}
+  nav.tabs button{flex:1; background:none; border:none; padding:10px 4px 8px; font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:var(--walnut-soft); display:flex; flex-direction:column; align-items:center; gap:3px;}
+  nav.tabs button svg{width:22px; height:22px;}
+  nav.tabs button.active{color:var(--amber-dark);}
+  main{padding:16px; max-width:640px; margin:0 auto;}
+  section.view{display:none;}
+  section.view.active{display:block; animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+  .card{background:var(--white); border-radius:var(--radius); padding:16px; margin-bottom:14px; border:1px solid #EFE2C4;}
+  .card h2{font-size:16px; color:var(--walnut); margin-bottom:12px; display:flex; align-items:center; gap:8px;}
+  .card h2 .dot{width:8px;height:8px;background:var(--amber); transform:rotate(45deg); display:inline-block;}
+  .section-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+  .fab{width:34px; height:34px; border-radius:50%; background:var(--amber); color:var(--white); border:none; font-size:20px; font-weight:700; line-height:34px; text-align:center; padding:0;}
+  label{display:block; font-size:12px; font-weight:600; color:var(--walnut-soft); margin:12px 0 6px; text-transform:uppercase; letter-spacing:.4px;}
+  label:first-of-type{margin-top:0;}
+  .hint{font-size:11.5px; color:var(--walnut-soft); margin:-3px 0 6px; font-weight:500; text-transform:none; letter-spacing:0;}
+  input[type=text], input[type=number], input[type=date], textarea, select{width:100%; border:1.5px solid #E9DCC0; border-radius:10px; padding:10px 12px; font-size:15px; font-family:'Inter',sans-serif; background:var(--cream); color:var(--walnut);}
+  textarea{min-height:70px; resize:vertical;}
+  input:focus, textarea:focus{outline:2px solid var(--amber); border-color:var(--amber);}
+  .row2{display:flex; gap:10px;}
+  .row2 > div{flex:1;}
+  .seg{display:flex; gap:6px; flex-wrap:wrap;}
+  .seg button{flex:1; min-width:70px; padding:9px 6px; border-radius:9px; border:1.5px solid #E9DCC0; background:var(--cream); color:var(--walnut-soft); font-size:13px; font-weight:600; font-family:'Inter',sans-serif;}
+  .seg button.sel{background:var(--amber); border-color:var(--amber-dark); color:var(--white);}
+  .seg button.warn.sel{background:var(--rust); border-color:#8f351f;}
+  .seg button.ok.sel{background:var(--olive); border-color:#565f31;}
+  .weather{display:flex; gap:8px;}
+  .weather button{flex:1; padding:10px 0; border-radius:10px; border:1.5px solid #E9DCC0; background:var(--cream); font-size:20px;}
+  .weather button.sel{background:var(--amber); border-color:var(--amber-dark);}
+  .btn-primary{width:100%; background:var(--walnut); color:var(--cream); border:none; padding:14px; border-radius:12px; font-size:15px; font-weight:700; font-family:'Inter',sans-serif; margin-top:18px;}
+  .btn-secondary{width:100%; background:var(--cream); color:var(--walnut); border:1.5px dashed var(--amber-dark); padding:12px; border-radius:12px; font-size:14px; font-weight:600; margin-top:8px;}
+  .hive-chip-row{display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:4px;}
+  .hive-chip{flex:0 0 auto; padding:9px 14px; border-radius:20px; border:1.5px solid #E9DCC0; background:var(--cream); font-weight:700; font-size:14px; color:var(--walnut-soft); white-space:nowrap;}
+  .hive-chip.sel{background:var(--walnut); color:var(--cream); border-color:var(--walnut);}
+  .hive-chip.required-empty{border-color:var(--rust); border-style:dashed;}
+  .hive-card{padding:13px 14px; border-radius:12px; background:var(--cream-2); margin-bottom:10px;}
+  .hive-card .top{display:flex; align-items:flex-start; justify-content:space-between;}
+  .hive-card .info b{font-family:'Fraunces',serif; font-size:16px;}
+  .hive-card .info div{font-size:12px; color:var(--walnut-soft); margin-top:2px;}
+  .hive-card .tags{display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;}
+  .hive-card .tags span{font-size:11px; font-weight:700; background:var(--white); color:var(--walnut-soft); padding:2px 8px; border-radius:6px;}
+  .hive-card .actions{display:flex; align-items:center; gap:2px;}
+  .hive-card button.del{background:none; border:none; color:var(--rust); font-size:18px; padding:4px 8px;}
+  .hive-card button.edit{background:none; border:none; color:var(--walnut-soft); font-size:16px; padding:4px 6px;}
+  .last-rev{margin-top:10px; padding-top:10px; border-top:1px dashed #DCC89C; font-size:12.5px; color:var(--walnut-soft); line-height:1.6;}
+  .last-rev .lr-title{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--amber-dark); margin-bottom:4px;}
+  .last-rev .none{font-style:italic;}
+  .entry{border-left:3px solid var(--amber); padding:10px 56px 10px 12px; margin-bottom:10px; background:var(--cream-2); border-radius:0 10px 10px 0; position:relative;}
+  .entry.extract{border-left-color:var(--olive);}
+  .entry .row{display:flex; justify-content:space-between; align-items:baseline;}
+  .entry .row b{font-family:'Fraunces',serif; font-size:15px;}
+  .entry .row span{font-size:11px; color:var(--walnut-soft); font-weight:600;}
+  .entry .meta{font-size:12.5px; color:var(--walnut-soft); margin-top:5px; line-height:1.5;}
+  .badge{display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:700; margin-right:5px; margin-top:4px;}
+  .badge.bad{background:#F5D9D0; color:var(--rust);}
+  .badge.good{background:#E4E8D2; color:var(--olive);}
+  .badge.neutral{background:#EFE2C4; color:var(--walnut-soft);}
+  .del-entry{position:absolute; top:8px; right:8px; background:none; border:none; color:var(--walnut-soft); font-size:15px;}
+  .empty{text-align:center; color:var(--walnut-soft); padding:30px 10px; font-size:14px;}
+  .empty .hex-big{font-size:36px; opacity:.3; margin-bottom:8px;}
+  .toast{position:fixed; bottom:96px; left:50%; transform:translateX(-50%); background:var(--walnut); color:var(--cream); padding:10px 20px; border-radius:24px; font-size:13px; font-weight:600; opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; z-index:50;}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+  .photo-input-row{display:flex; align-items:center; gap:10px; margin-top:6px;}
+  .photo-btn{display:inline-flex; align-items:center; gap:6px; padding:9px 14px; border-radius:10px; border:1.5px dashed var(--amber-dark); background:var(--cream); color:var(--walnut-soft); font-size:13px; font-weight:600; cursor:pointer;}
+  .photo-preview{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+  .photo-preview .thumb{position:relative; width:60px; height:60px; border-radius:8px; overflow:hidden; border:1px solid #E9DCC0;}
+  .photo-preview .thumb img{width:100%; height:100%; object-fit:cover;}
+  .photo-preview .thumb .rm{position:absolute; top:0; right:0; background:rgba(58,39,24,.75); color:#fff; border:none; width:18px; height:18px; font-size:11px; line-height:18px; padding:0; border-radius:0 0 0 6px;}
+  .export-btn{width:100%; background:var(--olive); color:var(--white); border:none; padding:12px; border-radius:12px; font-size:14px; font-weight:700; font-family:'Inter',sans-serif; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:4px;}
+  .storage-note{font-size:11.5px; color:var(--walnut-soft); text-align:center; margin:6px 0 14px; line-height:1.4;}
+  .photo-toggle{background:none; border:none; color:var(--amber-dark); font-size:12px; font-weight:700; padding:6px 0 0; text-align:left;}
+  .photo-gallery{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
+  .year-group-title{font-family:'Fraunces',serif; font-size:15px; margin:18px 0 8px; display:flex; align-items:center; gap:8px; color:var(--walnut);}
+  .year-group-title:first-child{margin-top:0;}
+  .year-group-title .line{flex:1; height:1px; background:#E9DCC0;}
+  .season-summary{background:var(--olive); color:var(--white); border-radius:12px; padding:12px 14px; margin-bottom:10px; font-size:13px; display:flex; justify-content:space-between; align-items:center;}
+  .season-summary b{font-family:'Fraunces',serif; font-size:18px;}
+  .season-summary.weather{background:#4A7A9E; align-items:flex-start; flex-direction:column; gap:4px;}
+  .season-summary.weather .wrow{display:flex; justify-content:space-between; width:100%; gap:10px; flex-wrap:wrap;}
+  .season-summary.weather b{font-size:15px;}
+  .note-entry{border-left:3px solid var(--walnut-soft); padding:10px 56px 10px 12px; margin-bottom:10px; background:#EFE6D6; border-radius:0 10px 10px 0; position:relative; font-size:13px;}
+  .group-header{display:flex; justify-content:space-between; align-items:center; background:var(--white); border:1px solid #EFE2C4; border-radius:10px; padding:11px 14px; margin:10px 0 8px; font-weight:700; font-size:13.5px; color:var(--walnut); cursor:pointer;}
+  .group-header .chev{color:var(--amber-dark); font-size:11px;}
+  .weather-toggle{display:block; width:100%; margin-top:10px; padding:10px; border:none; border-radius:9px; background:var(--amber); color:var(--walnut); font-size:12.5px; font-weight:800; text-align:center; cursor:pointer; -webkit-appearance:none; appearance:none; outline:none;}
+  .weather-month{display:flex; justify-content:space-between; align-items:center; padding:9px 2px; gap:10px; border-top:1px solid rgba(255,255,255,.25); font-size:12.5px; cursor:pointer;}
+  .weather-days{max-height:220px; overflow-y:auto; background:rgba(255,255,255,.12); border-radius:8px; margin:2px 0 6px; padding:2px 10px;}
+  .wday{display:grid; grid-template-columns:20px 48px 1fr 56px; align-items:center; gap:8px; font-size:11.5px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.15);}
+  .wday:last-child{border-bottom:none;}
+  .honey-chart{display:flex; align-items:flex-end; gap:10px; height:150px; padding-top:6px;}
+  .hc-bar-wrap{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; min-width:0;}
+  .hc-bar{width:100%; max-width:40px; background:linear-gradient(180deg,var(--amber),var(--amber-dark)); border-radius:6px 6px 0 0; transition:height .3s;}
+  .hc-val{font-size:11px; font-weight:700; color:var(--walnut); margin-top:5px; white-space:nowrap;}
+  .hc-label{font-size:11px; color:var(--walnut-soft); margin-top:2px; font-weight:600;}
+  .modal-overlay{position:fixed; inset:0; background:rgba(58,39,24,.55); z-index:40; display:none; align-items:flex-end; justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal-box{background:var(--white); width:100%; max-width:640px; border-radius:20px 20px 0 0; padding:20px; max-height:88vh; overflow-y:auto;}
+  .modal-box h2{font-size:18px; margin-bottom:14px;}
+  .toggle-row{display:flex; gap:8px;}
+  .toggle-row button{flex:1; padding:10px; border-radius:10px; border:1.5px solid #E9DCC0; background:var(--cream); font-weight:600; font-size:14px;}
+  .toggle-row button.sel{background:var(--walnut); color:var(--cream); border-color:var(--walnut);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hexrow">⬡</div>
+  <button class="settings-btn" onclick="openSettingsModal()">⚙️</button>
+  <h1 id="app-title">🐝 Colmenar Zeta</h1>
+  <p>Bitácora de revisión y extracción</p>
+</header>
+
+<main>
+  <section class="view" id="view-colmenas">
+    <div class="card">
+      <div class="section-head">
+        <h2 style="margin-bottom:0"><span class="dot"></span>Tus colmenas</h2>
+        <button class="fab" onclick="openHiveModal()">+</button>
+      </div>
+      <div id="hive-list"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-revision">
+    <div class="card">
+      <h2><span class="dot"></span>Colmena</h2>
+      <div class="hive-chip-row" id="rev-hive-chips"></div>
+      <label>Fecha</label>
+      <input type="date" id="rev-fecha">
+    </div>
+    <div class="card">
+      <h2><span class="dot"></span>Estado de la colmena</h2>
+      <label>Estado de los panales</label>
+      <div class="hint">Aspecto general de los cuadros: limpios, con cera nueva, sin moho ni deformaciones</div>
+      <div class="seg" data-field="peina"><button>Buena</button><button>Regular</button><button class="warn">Mala</button></div>
+      <label>Postura / huevos</label>
+      <div class="seg" data-field="postura"><button class="ok">Sí</button><button class="warn">No</button></div>
+      <label>Cría operculada</label>
+      <div class="seg" data-field="cria"><button>Alta</button><button>Media</button><button class="warn">Baja</button></div>
+      <label>Población de abejas</label>
+      <div class="seg" data-field="poblacion"><button>Alta</button><button>Media</button><button class="warn">Baja</button></div>
+      <label>Reservas de miel</label>
+      <div class="seg" data-field="reservas"><button>Alta</button><button>Media</button><button class="warn">Baja</button></div>
+      <label>Polen</label>
+      <div class="seg" data-field="polen"><button>Alto</button><button>Medio</button><button class="warn">Bajo</button></div>
+      <label>Presencia de plagas / varroa</label>
+      <div class="seg" data-field="plagas"><button class="warn">Sí</button><button class="ok">No</button></div>
+      <label>Celdas reales / realeras visibles</label>
+      <div class="hint">El aviso más fiable de riesgo de enjambrazón</div>
+      <div class="seg" data-field="celdas"><button class="warn">Sí</button><button class="ok">No</button></div>
+      <label>Estado general</label>
+      <div class="seg" data-field="estado"><button class="ok">Excelente</button><button>Buena</button><button>Regular</button><button class="warn">Mala</button></div>
+    </div>
+    <div class="card">
+      <h2><span class="dot"></span>Recuento de cuadros <span style="font-size:11px;font-weight:600;color:var(--walnut-soft);text-transform:none;">(opcional)</span></h2>
+      <div class="row2">
+        <div><label>Con miel</label><input type="number" min="0" id="rev-cmiel" placeholder="—"></div>
+        <div><label>Con cría</label><input type="number" min="0" id="rev-ccria" placeholder="—"></div>
+        <div><label>Miel operculada</label><input type="number" min="0" id="rev-coperc" placeholder="—"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2><span class="dot"></span><span id="rev-form-title">Actuaciones</span></h2>
+      <label>Alimentación aplicada</label>
+      <input type="text" id="rev-alim" placeholder="Ej. Jarabe 1:1, 1L">
+      <label>Tratamiento aplicado</label>
+      <input type="text" id="rev-trat" placeholder="Ej. Ácido oxálico">
+      <label>Observaciones</label>
+      <textarea id="rev-obs" placeholder="Notas de la visita..."></textarea>
+      <label>Fotos existentes</label>
+      <div class="photo-preview" id="rev-existing-photos"></div>
+      <label>Añadir fotos</label>
+      <div class="photo-input-row">
+        <label class="photo-btn">📷 Añadir foto<input type="file" accept="image/*" multiple style="display:none" onchange="handlePhotoSelect(event,'rev')"></label>
+        <span style="font-size:11.5px;color:var(--walnut-soft)">Se comprimen antes de subir</span>
+      </div>
+      <div class="photo-preview" id="rev-photo-preview"></div>
+    </div>
+    <button class="btn-primary" id="rev-save-btn" onclick="saveRevision()">Guardar revisión</button>
+    <button class="btn-secondary" id="rev-cancel-btn" style="display:none" onclick="cancelRevisionEdit()">Cancelar edición</button>
+  </section>
+
+  <section class="view" id="view-extraccion">
+    <div class="card">
+      <h2><span class="dot"></span><span id="ext-form-title">Extracción de miel</span></h2>
+      <label>Colmena</label>
+      <div class="hive-chip-row" id="ext-hive-chips"></div>
+      <label>Fecha de extracción</label>
+      <input type="date" id="ext-fecha">
+      <label>Cuadros extraídos</label>
+      <input type="number" id="ext-cuadros" min="0" placeholder="Ej. 8">
+      <label>Kg de miel obtenidos</label>
+      <input type="number" step="0.1" id="ext-kg" min="0" placeholder="Ej. 12.5">
+      <label>Humedad de la miel (%)</label>
+      <input type="number" step="0.1" id="ext-humedad" min="0" max="100" placeholder="Ej. 17.2">
+      <label>Notas</label>
+      <textarea id="ext-notas" placeholder="Color, sabor, floración predominante..."></textarea>
+      <label>Fotos existentes</label>
+      <div class="photo-preview" id="ext-existing-photos"></div>
+      <label>Añadir fotos</label>
+      <div class="photo-input-row">
+        <label class="photo-btn">📷 Añadir foto<input type="file" accept="image/*" multiple style="display:none" onchange="handlePhotoSelect(event,'ext')"></label>
+        <span style="font-size:11.5px;color:var(--walnut-soft)">Se comprimen antes de subir</span>
+      </div>
+      <div class="photo-preview" id="ext-photo-preview"></div>
+      <button class="btn-primary" id="ext-save-btn" onclick="saveExtraccion()">Guardar extracción</button>
+      <button class="btn-secondary" id="ext-cancel-btn" style="display:none" onclick="cancelExtractionEdit()">Cancelar edición</button>
+    </div>
+  </section>
+
+  <section class="view" id="view-enjambres">
+    <div class="card">
+      <h2><span class="dot"></span><span id="swarm-form-title">Registrar enjambre</span></h2>
+      <label>Fecha</label>
+      <input type="date" id="swarm-fecha">
+      <label>¿De dónde viene?</label>
+      <div class="hive-chip-row" id="swarm-origen-chips"></div>
+      <label>¿Qué pasó?</label>
+      <div class="toggle-row" id="swarm-capturado">
+        <button data-v="Sí">🎯 Lo capturé</button><button data-v="No">💨 Se perdió</button>
+      </div>
+      <div id="swarm-destino-wrap" style="display:none">
+        <label>Colmena / núcleo formado</label>
+        <div class="hint">Si aún no la has creado, ve primero a la pestaña Colmenas y créala — luego enlázala aquí</div>
+        <div class="hive-chip-row" id="swarm-destino-chips"></div>
+      </div>
+      <label>Notas</label>
+      <textarea id="swarm-notas" placeholder="Altura del enjambre, tamaño, comportamiento..."></textarea>
+      <button class="btn-primary" id="swarm-save-btn" onclick="saveSwarm()">Guardar enjambre</button>
+      <button class="btn-secondary" id="swarm-cancel-btn" style="display:none" onclick="cancelSwarmEdit()">Cancelar edición</button>
+    </div>
+  </section>
+
+  <section class="view" id="view-historial">
+    <div id="honey-chart"></div>
+    <div class="card">
+      <button class="export-btn" style="background:var(--walnut-soft)" onclick="openNoteModal()">📝 Añadir nota de temporada</button>
+      <h2><span class="dot"></span>Temporada</h2>
+      <div class="hive-chip-row" id="year-chips"></div>
+      <h2 style="margin-top:14px"><span class="dot"></span>Colmena</h2>
+      <div class="hive-chip-row" id="hist-hive-chips"></div>
+    </div>
+    <div id="hist-list"></div>
+  </section>
+
+  <section class="view" id="view-clima">
+    <div class="card" id="location-card">
+      <h2><span class="dot"></span>📍 Ubicación del apiario</h2>
+      <div id="location-status" class="hint" style="margin-bottom:8px"></div>
+      <div class="row2">
+        <div><label>Latitud</label><input type="text" id="loc-lat" placeholder="Ej. 40.6789"></div>
+        <div><label>Longitud</label><input type="text" id="loc-lon" placeholder="Ej. -3.5432"></div>
+      </div>
+      <button class="btn-secondary" onclick="useMyLocation()">📡 Usar mi ubicación actual</button>
+      <button class="btn-primary" onclick="saveLocation()">Guardar ubicación</button>
+    </div>
+    <div class="card">
+      <h2><span class="dot"></span>Temporada</h2>
+      <div class="hive-chip-row" id="clima-year-chips"></div>
+    </div>
+    <div id="clima-content"></div>
+  </section>
+</main>
+
+<nav class="tabs">
+  <button data-view="colmenas" onclick="switchView('colmenas')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 L21 7 L21 17 L12 22 L3 17 L3 7 Z"/></svg>Colmenas
+  </button>
+  <button data-view="revision" onclick="switchView('revision')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Revisión
+  </button>
+  <button data-view="extraccion" onclick="switchView('extraccion')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18l-2 12H5L3 3z"/><path d="M8 21h8"/><path d="M10 17v4"/><path d="M14 17v4"/></svg>Extracción
+  </button>
+  <button data-view="enjambres" onclick="switchView('enjambres')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="3"/><circle cx="15" cy="8" r="2.3"/><circle cx="12" cy="14" r="2.6"/><circle cx="17" cy="14" r="2"/><circle cx="8" cy="15" r="2"/></svg>Enjambres
+  </button>
+  <button data-view="clima" onclick="switchView('clima')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19a4.5 4.5 0 000-9 6 6 0 00-11.3-2A5 5 0 007 18"/><path d="M9 22l1-2M13 22l1-2M17 22l1-2"/></svg>Clima
+  </button>
+  <button data-view="historial" onclick="switchView('historial')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Historial
+  </button>
+</nav>
+
+<div class="modal-overlay" id="hive-modal">
+  <div class="modal-box">
+    <h2 id="hv-modal-title">Añadir colmena</h2>
+    <label>Número / nombre</label>
+    <input type="text" id="hv-nombre" placeholder="Ej. Colmena 4">
+    <label>Apiario</label>
+    <input type="text" id="hv-apiario" placeholder="Ej. Finca Norte">
+    <label>Ubicación</label>
+    <input type="text" id="hv-ubicacion" placeholder="Ej. Lindero, sombra parcial">
+    <label>Alzas puestas</label>
+    <input type="number" min="0" id="hv-alzas" placeholder="0">
+    <label>Excluidor de reina</label>
+    <div class="toggle-row" id="hv-excluidor">
+      <button data-v="Sí">Sí</button><button data-v="No" class="sel">No</button>
+    </div>
+    <div class="hint">El año/color de marcaje de la reina se registra aparte, con el botón 👑 de cada colmena</div>
+    <button class="btn-primary" id="hv-save-btn" onclick="saveHive()">Guardar colmena</button>
+    <button class="btn-secondary" onclick="closeHiveModal()">Cancelar</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal-box">
+    <h2>⚙️ Ajustes</h2>
+    <label>Nombre del colmenar</label>
+    <input type="text" id="settings-nombre" placeholder="Ej. Colmenar Zeta">
+    <button class="btn-secondary" onclick="saveAppName()">Guardar nombre</button>
+    <div class="hint" style="margin-top:16px">¿Quieres llevar un colmenar totalmente aparte del que ya tienes? Copia el programa a otra carpeta — cada copia guarda sus propios datos, independientes entre sí.</div>
+    <label style="margin-top:18px">Datos</label>
+    <button class="export-btn" onclick="exportExcel()">⬇️ Exportar todo a Excel</button>
+    <button class="export-btn" style="background:var(--amber-dark)" onclick="downloadBackup()">🗄️ Copia de seguridad completa (.zip)</button>
+    <div class="storage-note" style="margin-top:0">Los datos y las fotos viven en la carpeta "data", junto a este programa.</div>
+    <button class="btn-secondary" onclick="closeSettingsModal()">Cerrar</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="queen-modal">
+  <div class="modal-box">
+    <h2 id="queen-modal-title">Registrar cambio de reina</h2>
+    <label>Colmena</label>
+    <div class="hive-chip-row" id="queen-hive-chips"></div>
+    <label>Fecha del cambio</label>
+    <input type="date" id="queen-fecha">
+    <label>Año de la reina</label>
+    <div class="hint">Se usa para calcular su edad y el color de marcaje internacional</div>
+    <input type="number" min="2015" max="2035" id="queen-anio" placeholder="Ej. 2026">
+    <label>Motivo</label>
+    <div class="seg" data-field="queenmotivo"><button>Vieja</button><button>Enjambrazón</button><button>Mal carácter</button><button>Muerta</button><button>Otro</button></div>
+    <label>Notas</label>
+    <textarea id="queen-notas" placeholder="Origen de la nueva reina, detalles..."></textarea>
+    <button class="btn-primary" id="queen-save-btn" onclick="saveQueen()">Guardar</button>
+    <button class="btn-secondary" onclick="closeQueenModal()">Cancelar</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="note-modal">
+  <div class="modal-box">
+    <h2 id="note-modal-title">Añadir nota de temporada</h2>
+    <label>Fecha</label>
+    <input type="date" id="note-fecha">
+    <label>Nota</label>
+    <textarea id="note-texto" placeholder="Ej. Dividí la 3 y la 5, después vino una racha de mal tiempo..." style="min-height:100px"></textarea>
+    <button class="btn-primary" id="note-save-btn" onclick="saveNote()">Guardar nota</button>
+    <button class="btn-secondary" onclick="closeNoteModal()">Cancelar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let hives = [], revisions = [], extractions = [], swarms = [], notes = [], queens = [], photosMap = {};
+let currentView = 'colmenas';
+let revHiveSel = null, extHiveSel = null, histHiveSel = 'all', histYearSel = new Date().getFullYear().toString();
+let pendingPhotos = { rev: [], ext: [] };
+let openGalleries = {};
+let editingHiveId = null, editingRevId = null, editingExtId = null, editingSwarmId = null, editingNoteId = null, editingQueenId = null;
+let queenHiveSel = null;
+let swarmOrigenSel = null, swarmDestinoSel = null;
+let apiaryLocation = { lat: null, lon: null };
+let appName = 'Colmenar Zeta';
+let weatherCache = {};
+let climaYearSel = new Date().getFullYear().toString();
+
+const api = (path, opts) => localApi(path, opts);
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function yearOf(fecha){ return (fecha||'').slice(0,4) || 'Sin fecha'; }
+function queenInfo(anio){
+  if(!anio) return null;
+  const colors = {1:'Blanco',6:'Blanco',2:'Amarillo',7:'Amarillo',3:'Rojo',8:'Rojo',4:'Verde',9:'Verde',5:'Azul',0:'Azul'};
+  const age = new Date().getFullYear() - parseInt(anio);
+  return { color: colors[parseInt(anio)%10], age };
+}
+
+function downloadBackup(){ localBackupAndShare(); }
+
+function applyAppName(){
+  document.getElementById('app-title').textContent = '🐝 ' + appName;
+  document.title = appName + ' — Bitácora';
+}
+function openSettingsModal(){
+  document.getElementById('settings-nombre').value = appName;
+  document.getElementById('settings-modal').classList.add('open');
+}
+function closeSettingsModal(){ document.getElementById('settings-modal').classList.remove('open'); }
+async function saveAppName(){
+  const nombre = document.getElementById('settings-nombre').value.trim() || 'Colmenar Zeta';
+  await api('/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nombre})});
+  appName = nombre;
+  applyAppName();
+  showToast('Nombre actualizado ✓');
+}
+
+function useMyLocation(){
+  if(!navigator.geolocation){ showToast('Tu navegador no soporta geolocalización'); return; }
+  showToast('Obteniendo ubicación...');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById('loc-lat').value = pos.coords.latitude.toFixed(5);
+      document.getElementById('loc-lon').value = pos.coords.longitude.toFixed(5);
+      showToast('Ubicación obtenida, pulsa Guardar');
+    },
+    err => showToast('No se pudo obtener la ubicación'),
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+async function saveLocation(){
+  const lat = parseFloat(document.getElementById('loc-lat').value);
+  const lon = parseFloat(document.getElementById('loc-lon').value);
+  if(isNaN(lat) || isNaN(lon)){ showToast('Introduce latitud y longitud válidas'); return; }
+  await api('/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({lat, lon})});
+  apiaryLocation = { lat, lon };
+  weatherCache = {};
+  document.getElementById('location-status').textContent = `Configurada: ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+  showToast('Ubicación guardada ✓');
+  renderClimaContent();
+}
+
+// ---------- Cambios de reina ----------
+function renderQueenHiveChips(){
+  const el = document.getElementById('queen-hive-chips');
+  el.innerHTML = hives.map(h=>`<div class="hive-chip ${queenHiveSel===h.id?'sel':''}" data-id="${h.id}">${h.nombre}</div>`).join('');
+  el.querySelectorAll('.hive-chip').forEach(chip=>{ chip.onclick = ()=>{ queenHiveSel = chip.dataset.id; renderQueenHiveChips(); }; });
+}
+document.querySelectorAll('.seg[data-field="queenmotivo"] button').forEach(btn=>{
+  btn.onclick = ()=>{ document.querySelectorAll('.seg[data-field="queenmotivo"] button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); };
+});
+
+function openQueenModal(hiveId, editId){
+  editingQueenId = editId || null;
+  const modal = document.getElementById('queen-modal');
+  if(editId){
+    const q = queens.find(x=>x.id===editId);
+    if(!q) return;
+    queenHiveSel = q.hiveId;
+    document.getElementById('queen-modal-title').textContent = 'Editar cambio de reina';
+    document.getElementById('queen-fecha').value = q.fecha || '';
+    document.getElementById('queen-anio').value = q.anio_reina || '';
+    document.querySelectorAll('.seg[data-field="queenmotivo"] button').forEach(b=>b.classList.toggle('sel', b.textContent===q.motivo));
+    document.getElementById('queen-notas').value = q.notas || '';
+    document.getElementById('queen-save-btn').textContent = 'Guardar cambios';
+  } else {
+    queenHiveSel = hiveId || null;
+    document.getElementById('queen-modal-title').textContent = 'Registrar cambio de reina';
+    document.getElementById('queen-fecha').value = todayISO();
+    document.getElementById('queen-anio').value = new Date().getFullYear();
+    document.querySelectorAll('.seg[data-field="queenmotivo"] button.sel').forEach(b=>b.classList.remove('sel'));
+    document.getElementById('queen-notas').value = '';
+    document.getElementById('queen-save-btn').textContent = 'Guardar';
+  }
+  renderQueenHiveChips();
+  modal.classList.add('open');
+}
+function closeQueenModal(){ document.getElementById('queen-modal').classList.remove('open'); editingQueenId = null; queenHiveSel = null; }
+
+async function saveQueen(){
+  if(!queenHiveSel){ showToast('Selecciona una colmena'); return; }
+  const motivoBtn = document.querySelector('.seg[data-field="queenmotivo"] button.sel');
+  const payload = {
+    hiveId: queenHiveSel,
+    fecha: document.getElementById('queen-fecha').value || todayISO(),
+    anioReina: parseInt(document.getElementById('queen-anio').value) || null,
+    motivo: motivoBtn ? motivoBtn.textContent : '',
+    notas: document.getElementById('queen-notas').value.trim()
+  };
+  if(editingQueenId){
+    await api('/queens/'+editingQueenId, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    showToast('Cambio de reina actualizado ✓');
+  } else {
+    await api('/queens', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    showToast('Cambio de reina guardado ✓');
+  }
+  closeQueenModal();
+  await loadAll();
+}
+
+// ---------- Notas de temporada ----------
+function openNoteModal(id){
+  editingNoteId = id || null;
+  const modal = document.getElementById('note-modal');
+  if(id){
+    const n = notes.find(x=>x.id===id);
+    if(!n) return;
+    document.getElementById('note-modal-title').textContent = 'Editar nota';
+    document.getElementById('note-fecha').value = n.fecha || '';
+    document.getElementById('note-texto').value = n.texto || '';
+    document.getElementById('note-save-btn').textContent = 'Guardar cambios';
+  } else {
+    document.getElementById('note-modal-title').textContent = 'Añadir nota de temporada';
+    document.getElementById('note-fecha').value = todayISO();
+    document.getElementById('note-texto').value = '';
+    document.getElementById('note-save-btn').textContent = 'Guardar nota';
+  }
+  modal.classList.add('open');
+}
+function closeNoteModal(){ document.getElementById('note-modal').classList.remove('open'); editingNoteId = null; }
+
+async function saveNote(){
+  const texto = document.getElementById('note-texto').value.trim();
+  if(!texto){ showToast('Escribe algo en la nota'); return; }
+  const payload = { fecha: document.getElementById('note-fecha').value || todayISO(), texto };
+  if(editingNoteId){
+    await api('/notes/'+editingNoteId, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    showToast('Nota actualizada ✓');
+  } else {
+    await api('/notes', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    showToast('Nota guardada ✓');
+  }
+  closeNoteModal();
+  await loadAll();
+}
+
+// ---------- Clima ----------
+async function fetchWeatherForYear(year){
+  weatherCache[year] = {status:'loading', days:[]};
+  try{
+    const res = await localApi(`/weather/season/${year}`);
+    weatherCache[year] = res.error ? {status:'error', days:[]} : {status:'loaded', days: res.days || []};
+  }catch(e){ weatherCache[year] = {status:'error', days:[]}; }
+  renderClimaContent();
+}
+function summarizeWeather(days){
+  if(!days || days.length===0) return null;
+  const maxVals = days.map(d=>d.temp_max).filter(v=>v!=null);
+  const minVals = days.map(d=>d.temp_min).filter(v=>v!=null);
+  const rain = days.reduce((s,d)=> s + (d.precipitation_mm||0), 0);
+  const rainyDays = days.filter(d=>(d.precipitation_mm||0) > 1).length;
+  return {
+    maxT: maxVals.length ? Math.max(...maxVals) : null,
+    minT: minVals.length ? Math.min(...minVals) : null,
+    rain, rainyDays
+  };
+}
+const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+function weatherIcon(d){
+  const precip = d.precipitation_mm || 0;
+  if(precip > 8) return '⛈️';
+  if(precip > 1) return '🌧️';
+  if(d.daylight_hours && d.daylight_hours > 0){
+    const frac = (d.sun_hours || 0) / d.daylight_hours;
+    if(frac >= 0.65) return '☀️';
+    if(frac >= 0.35) return '⛅';
+    return '☁️';
+  }
+  return precip > 0 ? '🌦️' : '⛅';
+}
+function groupByMonth(days){
+  const months = {};
+  days.forEach(d=>{ const m = d.date.slice(0,7); (months[m] = months[m] || []).push(d); });
+  return months;
+}
+
+function renderClimaYearChips(){
+  const el = document.getElementById('clima-year-chips');
+  const currentYear = new Date().getFullYear().toString();
+  const years = new Set([currentYear]);
+  revisions.forEach(r=>years.add(yearOf(r.fecha)));
+  extractions.forEach(x=>years.add(yearOf(x.fecha)));
+  const sorted = Array.from(years).sort().reverse();
+  el.innerHTML = sorted.map(y=>`<div class="hive-chip ${climaYearSel===y?'sel':''}" data-y="${y}">${y}</div>`).join('');
+  el.querySelectorAll('.hive-chip').forEach(chip=>{ chip.onclick = ()=>{ climaYearSel = chip.dataset.y; renderClimaYearChips(); renderClimaContent(); }; });
+}
+
+function renderClimaContent(){
+  const el = document.getElementById('clima-content');
+  if(!apiaryLocation.lat){
+    el.innerHTML = '<div class="empty"><div class="hex-big">📍</div>Configura la ubicación del apiario arriba para ver el clima.</div>';
+    return;
+  }
+  const y = climaYearSel;
+  const wc = weatherCache[y];
+  if(!wc || wc.status==='loading'){
+    if(!wc) fetchWeatherForYear(y);
+    el.innerHTML = '<div class="empty">🌦️ Cargando clima de la temporada...</div>';
+    return;
+  }
+  if(wc.status==='error'){
+    el.innerHTML = '<div class="empty">No se pudo obtener el clima (¿tiene el servidor salida a internet?)</div>';
+    return;
+  }
+  const s = summarizeWeather(wc.days);
+  if(!s){ el.innerHTML = '<div class="empty">Sin datos de clima para esta temporada.</div>'; return; }
+
+  const weatherKey = `weather:${y}`;
+  const weatherOpen = !!openGroups[weatherKey];
+  const months = groupByMonth(wc.days);
+  const monthsHtml = Object.keys(months).sort().map(m=>{
+    const mdays = months[m];
+    const s2 = summarizeWeather(mdays);
+    const monthKey = `weathermonth:${m}`;
+    const monthOpen = !!openGroups[monthKey];
+    const monthLabel = MONTH_NAMES[parseInt(m.slice(5,7))-1];
+    const daysHtml = monthOpen ? `<div class="weather-days">${mdays.map(d=>`
+      <div class="wday"><span>${weatherIcon(d)}</span><span>Día ${d.date.slice(8,10)}</span><span>${d.temp_max!=null?d.temp_max.toFixed(0):'—'}° / ${d.temp_min!=null?d.temp_min.toFixed(0):'—'}°</span><span>${(d.precipitation_mm||0)>0 ? d.precipitation_mm.toFixed(1)+' mm' : '—'}</span></div>
+    `).join('')}</div>` : '';
+    return `<div class="weather-month" onclick="toggleGroup('${monthKey}'); renderClimaContent();">
+      <span>${monthOpen?'▲':'▼'} ${monthLabel}</span><span>${s2.rain.toFixed(0)}mm · ${s2.maxT!=null?s2.maxT.toFixed(0):'—'}°/${s2.minT!=null?s2.minT.toFixed(0):'—'}°</span>
+    </div>${daysHtml}`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="season-summary weather" style="margin-bottom:0">
+        <div class="wrow"><span>🌦️ Clima temporada ${y}</span><b>${s.rain.toFixed(0)} mm lluvia</b></div>
+        <div class="wrow"><span>Máx ${s.maxT!=null?s.maxT.toFixed(1):'—'}°C · Mín ${s.minT!=null?s.minT.toFixed(1):'—'}°C</span><span>${s.rainyDays} días de lluvia</span></div>
+        <button class="weather-toggle" onclick="toggleGroup('${weatherKey}'); renderClimaContent();">${weatherOpen?'▲ Ocultar detalle mensual':'▼ Ver por meses'}</button>
+        ${weatherOpen ? monthsHtml : ''}
+      </div>
+    </div>`;
+}
+
+async function loadAll(){
+  try{
+    const d = await api('/data');
+    hives = d.hives || []; revisions = d.revisions || []; extractions = d.extractions || []; swarms = d.swarms || []; notes = d.notes || []; queens = d.queens || []; photosMap = d.photos || {};
+  }catch(e){ showToast('No se pudo conectar con el servidor'); }
+  try{
+    const s = await api('/settings');
+    apiaryLocation = { lat: s.lat, lon: s.lon };
+    appName = s.nombre || 'Colmenar Zeta';
+    applyAppName();
+    document.getElementById('loc-lat').value = s.lat ?? '';
+    document.getElementById('loc-lon').value = s.lon ?? '';
+    document.getElementById('location-status').textContent = s.lat ? `Configurada: ${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}` : 'Sin configurar todavía — el clima no se mostrará hasta que la guardes.';
+  }catch(e){}
+  renderAll();
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+function switchView(v){
+  currentView = v;
+  document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
+  renderAll();
+}
+
+function renderHoneyChart(){
+  const el = document.getElementById('honey-chart');
+  const byYear = {};
+  extractions.forEach(x=>{ const y = yearOf(x.fecha); if(y!=='Sin fecha') byYear[y] = (byYear[y]||0) + (parseFloat(x.kg)||0); });
+  const years = Object.keys(byYear).sort();
+  if(years.length < 2){ el.innerHTML = ''; return; }
+  const max = Math.max(...years.map(y=>byYear[y]));
+  const isOpen = !!openGroups['honeychart'];
+  el.innerHTML = `
+    <div class="group-header" onclick="toggleGroup('honeychart'); renderHoneyChart();">
+      <span>📊 Gráfica de miel por temporada</span>
+      <span class="chev">${isOpen?'▲':'▼'}</span>
+    </div>
+    ${isOpen ? `<div class="card" style="margin-top:-2px">
+      <div class="honey-chart">
+        ${years.map(y=>`
+          <div class="hc-bar-wrap">
+            <div class="hc-bar" style="height:${max>0 ? Math.max(6, byYear[y]/max*100) : 4}%"></div>
+            <div class="hc-val">${byYear[y].toFixed(1)}kg</div>
+            <div class="hc-label">${y}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>` : ''}`;
+}
+
+function renderAll(){
+  renderHiveList();
+  renderChips('rev-hive-chips', revHiveSel, (id)=>{revHiveSel=id; renderAll();});
+  renderChips('ext-hive-chips', extHiveSel, (id)=>{extHiveSel=id; renderAll();});
+  renderHistChips();
+  renderYearChips();
+  renderHistory();
+  renderHoneyChart();
+  renderOrigenChips();
+  renderDestinoChips();
+  renderClimaYearChips();
+  renderClimaContent();
+  if(!document.getElementById('rev-fecha').value) document.getElementById('rev-fecha').value = todayISO();
+  if(!document.getElementById('ext-fecha').value) document.getElementById('ext-fecha').value = todayISO();
+  if(!document.getElementById('swarm-fecha').value) document.getElementById('swarm-fecha').value = todayISO();
+}
+
+function renderOrigenChips(){
+  const el = document.getElementById('swarm-origen-chips');
+  let html = `<div class="hive-chip ${swarmOrigenSel==='unknown'?'sel':''}" data-id="unknown">❓ Desconocido/externo</div>`;
+  html += hives.map(h=>`<div class="hive-chip ${swarmOrigenSel===h.id?'sel':''}" data-id="${h.id}">${h.nombre}</div>`).join('');
+  el.innerHTML = html;
+  el.querySelectorAll('.hive-chip').forEach(chip=>{ chip.onclick = ()=>{ swarmOrigenSel = chip.dataset.id; renderAll(); }; });
+}
+function renderDestinoChips(){
+  const el = document.getElementById('swarm-destino-chips');
+  let html = `<div class="hive-chip ${swarmDestinoSel==='none'?'sel':''}" data-id="none">Aún sin crear</div>`;
+  html += hives.map(h=>`<div class="hive-chip ${swarmDestinoSel===h.id?'sel':''}" data-id="${h.id}">${h.nombre}</div>`).join('');
+  el.innerHTML = html;
+  el.querySelectorAll('.hive-chip').forEach(chip=>{ chip.onclick = ()=>{ swarmDestinoSel = chip.dataset.id; renderAll(); }; });
+}
+
+// ---------- Selección de colmena por chip (leída siempre desde el DOM) ----------
+function renderChips(containerId, selected, onClick){
+  const el = document.getElementById(containerId);
+  if(hives.length===0){ el.innerHTML = '<span style="font-size:13px;color:var(--walnut-soft)">Añade una colmena primero en la pestaña Colmenas.</span>'; return; }
+  el.innerHTML = hives.map(h=>`<div class="hive-chip ${selected===h.id?'sel':''}" data-id="${h.id}">${h.nombre}</div>`).join('');
+  el.querySelectorAll('.hive-chip').forEach(chip=>{ chip.onclick = ()=> onClick(chip.dataset.id); });
+}
+function getSelectedHiveId(containerId){
+  const sel = document.querySelector('#'+containerId+' .hive-chip.sel');
+  return sel ? sel.dataset.id : null;
+}
+
+function renderHistChips(){
+  const el = document.getElementById('hist-hive-chips');
+  let html = `<div class="hive-chip ${histHiveSel==='all'?'sel':''}" data-id="all">Todas</div>`;
+  html += hives.map(h=>`<div class="hive-chip ${histHiveSel===h.id?'sel':''}" data-id="${h.id}">${h.nombre}</div>`).join('');
+  el.innerHTML = html;
+  el.querySelectorAll('.hive-chip').forEach(chip=>{ chip.onclick = ()=>{ histHiveSel = chip.dataset.id; renderAll(); }; });
+}
+
+function renderYearChips(){
+  const el = document.getElementById('year-chips');
+  const currentYear = new Date().getFullYear().toString();
+  const years = new Set([currentYear]);
+  revisions.forEach(r=>years.add(yearOf(r.fecha)));
+  extractions.forEach(x=>years.add(yearOf(x.fecha)));
+  const sorted = Array.from(years).sort().reverse();
+  const html = sorted.map(y=>`<div class="hive-chip ${histYearSel===y?'sel':''}" data-y="${y}">${y}</div>`).join('');
+  el.innerHTML = html;
+  el.querySelectorAll('.hive-chip').forEach(chip=>{ chip.onclick = ()=>{ histYearSel = chip.dataset.y; renderAll(); }; });
+}
+
+// ---------- Colmenas ----------
+function lastRevisionFor(hiveId){
+  const revs = revisions.filter(r=>r.hiveId===hiveId).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  return revs[0] || null;
+}
+function currentQueen(hiveId){
+  const qs = queens.filter(q=>q.hiveId===hiveId).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  return qs[0] || null;
+}
+
+function renderHiveList(){
+  const el = document.getElementById('hive-list');
+  if(hives.length===0){ el.innerHTML = '<div class="empty"><div class="hex-big">⬡</div>Todavía no has añadido colmenas.<br>Toca el + para crear la primera.</div>'; return; }
+  el.innerHTML = hives.map(h=>{
+    const lr = lastRevisionFor(h.id);
+    const lastRevHtml = lr ? `
+      <div class="lr-title">Última revisión · ${lr.fecha}</div>
+      Panales: ${lr.peina||'—'} · Cría: ${lr.cria||'—'} · Población: ${lr.poblacion||'—'} · Reservas: ${lr.reservas||'—'}
+      ${lr.plagas==='Sí' ? '<br><span class="badge bad">⚠ Plagas/Varroa</span>' : ''}
+      ${lr.celdas_reales==='Sí' ? '<br><span class="badge bad">🐝 Riesgo de enjambrazón</span>' : ''}
+      ${lr.estado ? `<span class="badge ${lr.estado==='Mala'?'bad':(lr.estado==='Excelente'?'good':'neutral')}">${lr.estado}</span>` : ''}
+    ` : '<div class="lr-title">Última revisión</div><span class="none">Todavía sin revisiones</span>';
+    const cq = currentQueen(h.id);
+    const qi = cq ? queenInfo(cq.anio_reina) : null;
+    return `
+    <div class="hive-card">
+      <div class="top">
+        <div class="info">
+          <b>${h.nombre}</b>
+          <div>${h.apiario||'—'} · ${h.ubicacion||'—'}</div>
+          <div class="tags">
+            <span>🧱 ${h.alzas||0} alza${(h.alzas||0)==1?'':'s'}</span>
+            <span>${h.excluidor==='Sí' ? '✅ Excluidor puesto' : '⛔ Sin excluidor'}</span>
+            ${qi ? `<span>👑 Reina ${cq.anio_reina} (${qi.age} año${qi.age==1?'':'s'}) · ${qi.color}</span>` : `<span>👑 Reina sin registrar</span>`}
+          </div>
+        </div>
+        <div class="actions">
+          <button class="edit" onclick="openQueenModal('${h.id}')" title="Registrar cambio de reina">👑</button>
+          <button class="edit" onclick="openHiveModal('${h.id}')">✎</button>
+          <button class="del" onclick="delHive('${h.id}')">✕</button>
+        </div>
+      </div>
+      <div class="last-rev">${lastRevHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function openHiveModal(id){
+  editingHiveId = id || null;
+  const modal = document.getElementById('hive-modal');
+  if(id){
+    const h = hives.find(x=>x.id===id);
+    if(!h) return;
+    document.getElementById('hv-modal-title').textContent = 'Editar colmena';
+    document.getElementById('hv-nombre').value = h.nombre || '';
+    document.getElementById('hv-apiario').value = h.apiario || '';
+    document.getElementById('hv-ubicacion').value = h.ubicacion || '';
+    document.getElementById('hv-alzas').value = h.alzas || 0;
+    document.querySelectorAll('#hv-excluidor button').forEach(b=>b.classList.toggle('sel', b.dataset.v===(h.excluidor||'No')));
+    document.getElementById('hv-save-btn').textContent = 'Guardar cambios';
+  } else {
+    document.getElementById('hv-modal-title').textContent = 'Añadir colmena';
+    document.getElementById('hv-nombre').value = '';
+    document.getElementById('hv-apiario').value = '';
+    document.getElementById('hv-ubicacion').value = '';
+    document.getElementById('hv-alzas').value = '';
+    document.querySelectorAll('#hv-excluidor button').forEach(b=>b.classList.toggle('sel', b.dataset.v==='No'));
+    document.getElementById('hv-save-btn').textContent = 'Guardar colmena';
+  }
+  modal.classList.add('open');
+}
+function closeHiveModal(){
+  document.getElementById('hive-modal').classList.remove('open');
+  editingHiveId = null;
+}
+document.querySelectorAll('#hv-excluidor button').forEach(btn=>{
+  btn.onclick = ()=>{ document.querySelectorAll('#hv-excluidor button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); };
+});
+
+async function saveHive(){
+  const nombre = document.getElementById('hv-nombre').value.trim();
+  if(!nombre){ showToast('Ponle un nombre a la colmena'); return; }
+  const excluidorBtn = document.querySelector('#hv-excluidor button.sel');
+  const payload = {
+    nombre, apiario: document.getElementById('hv-apiario').value.trim(),
+    ubicacion: document.getElementById('hv-ubicacion').value.trim(),
+    alzas: parseInt(document.getElementById('hv-alzas').value) || 0,
+    excluidor: excluidorBtn ? excluidorBtn.dataset.v : 'No'
+  };
+  if(editingHiveId){
+    await api('/hives/'+editingHiveId, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    showToast('Colmena actualizada');
+  } else {
+    await api('/hives', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    showToast('Colmena guardada');
+  }
+  closeHiveModal();
+  await loadAll();
+}
+
+async function delHive(id){
+  if(!confirm('¿Eliminar esta colmena? No se borran sus registros históricos.')) return;
+  await api('/hives/'+id, {method:'DELETE'});
+  await loadAll();
+}
+
+// ---------- Segmentos ----------
+document.querySelectorAll('.seg').forEach(seg=>{
+  seg.querySelectorAll('button').forEach(btn=>{
+    btn.onclick = ()=>{ seg.querySelectorAll('button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); };
+  });
+});
+function getSegValue(field){ const sel = document.querySelector(`.seg[data-field="${field}"] button.sel`); return sel ? sel.textContent : ''; }
+function setSegValue(field, value){
+  const seg = document.querySelector(`.seg[data-field="${field}"]`);
+  if(!seg) return;
+  seg.querySelectorAll('button').forEach(b=>b.classList.toggle('sel', b.textContent===value));
+}
+function clearSegs(){ document.querySelectorAll('.seg button.sel').forEach(b=>b.classList.remove('sel')); }
+
+// ---------- Fotos ----------
+function resizeImage(file, maxDim=1000, quality=0.65){
+  return new Promise((resolve,reject)=>{
+    const img = new Image(); const reader = new FileReader();
+    reader.onload = e => { img.src = e.target.result; };
+    reader.onerror = reject;
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if(w > h && w > maxDim){ h = Math.round(h*maxDim/w); w = maxDim; }
+      else if(h >= w && h > maxDim){ w = Math.round(w*maxDim/h); h = maxDim; }
+      const canvas = document.createElement('canvas'); canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      canvas.toBlob(blob=>resolve(blob), 'image/jpeg', quality);
+    };
+    img.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function handlePhotoSelect(event, kind){
+  const files = Array.from(event.target.files || []);
+  for(const f of files){
+    try{ const blob = await resizeImage(f); pendingPhotos[kind].push(blob); }
+    catch(e){ showToast('No se pudo procesar una foto'); }
+  }
+  event.target.value = '';
+  renderPhotoPreview(kind);
+}
+function renderPhotoPreview(kind){
+  const el = document.getElementById(kind+'-photo-preview');
+  el.innerHTML = pendingPhotos[kind].map((blob,i)=>`<div class="thumb"><img src="${URL.createObjectURL(blob)}"><button class="rm" onclick="removePendingPhoto('${kind}',${i})">✕</button></div>`).join('');
+}
+function removePendingPhoto(kind,i){ pendingPhotos[kind].splice(i,1); renderPhotoPreview(kind); }
+async function uploadPhotos(entryType, entryId, blobs){
+  for(const blob of blobs){
+    await localUploadPhoto(entryType, entryId, blob);
+  }
+}
+async function delPhoto(photoId, entryType, entryId){
+  await localApi('/photos/'+photoId, {method:'DELETE'});
+  const key = `${entryType}:${entryId}`;
+  if(photosMap[key]) photosMap[key] = photosMap[key].filter(p=>p.id!==photoId);
+  renderExistingPhotos(entryType, entryId);
+  renderHistory();
+}
+function renderExistingPhotos(entryType, entryId){
+  const containerId = entryType === 'rev' ? 'rev-existing-photos' : 'ext-existing-photos';
+  const el = document.getElementById(containerId);
+  if(!entryId){ el.innerHTML = ''; return; }
+  const photos = photosMap[`${entryType}:${entryId}`] || [];
+  if(photos.length === 0){ el.innerHTML = '<span style="font-size:12px;color:var(--walnut-soft)">Sin fotos todavía</span>'; return; }
+  el.innerHTML = photos.map(p=>`
+    <div class="thumb"><img src="${p.dataUrl}"><button class="rm" onclick="delPhoto('${p.id}','${entryType}','${entryId}')">✕</button></div>
+  `).join('');
+}
+
+// ---------- Revisiones ----------
+async function saveRevision(){
+  const hiveId = getSelectedHiveId('rev-hive-chips');
+  if(!hiveId){ showToast('Selecciona una colmena'); return; }
+  const payload = {
+    hiveId, fecha: document.getElementById('rev-fecha').value || todayISO(),
+    peina: getSegValue('peina'), postura: getSegValue('postura'),
+    cria: getSegValue('cria'), poblacion: getSegValue('poblacion'), reservas: getSegValue('reservas'),
+    polen: getSegValue('polen'), plagas: getSegValue('plagas'), estado: getSegValue('estado'),
+    celdasReales: getSegValue('celdas'),
+    cuadrosMiel: document.getElementById('rev-cmiel').value, cuadrosCria: document.getElementById('rev-ccria').value,
+    cuadrosOperculada: document.getElementById('rev-coperc').value,
+    alimentacion: document.getElementById('rev-alim').value.trim(), tratamiento: document.getElementById('rev-trat').value.trim(),
+    observaciones: document.getElementById('rev-obs').value.trim()
+  };
+  let entryId;
+  if(editingRevId){
+    await api('/revisions/'+editingRevId, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    entryId = editingRevId;
+    showToast('Revisión actualizada ✓');
+  } else {
+    const res = await api('/revisions', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    entryId = res.id;
+    showToast('Revisión guardada ✓');
+  }
+  await uploadPhotos('rev', entryId, pendingPhotos.rev);
+  cancelRevisionEdit();
+  switchView('historial'); await loadAll();
+}
+
+function editRevision(id){
+  const r = revisions.find(x=>x.id===id);
+  if(!r) return;
+  editingRevId = id;
+  revHiveSel = r.hiveId;
+  switchView('revision');
+  document.getElementById('rev-fecha').value = r.fecha || '';
+  setSegValue('peina', r.peina); setSegValue('postura', r.postura); setSegValue('cria', r.cria);
+  setSegValue('poblacion', r.poblacion); setSegValue('reservas', r.reservas); setSegValue('polen', r.polen);
+  setSegValue('plagas', r.plagas); setSegValue('estado', r.estado); setSegValue('celdas', r.celdas_reales);
+  document.getElementById('rev-cmiel').value = r.cuadros_miel || '';
+  document.getElementById('rev-ccria').value = r.cuadros_cria || '';
+  document.getElementById('rev-coperc').value = r.cuadros_operculada || '';
+  document.getElementById('rev-alim').value = r.alimentacion || '';
+  document.getElementById('rev-trat').value = r.tratamiento || '';
+  document.getElementById('rev-obs').value = r.observaciones || '';
+  document.getElementById('rev-form-title').textContent = 'Editar revisión';
+  document.getElementById('rev-save-btn').textContent = 'Guardar cambios';
+  document.getElementById('rev-cancel-btn').style.display = 'block';
+  pendingPhotos.rev = []; renderPhotoPreview('rev');
+  renderExistingPhotos('rev', id);
+}
+function cancelRevisionEdit(){
+  editingRevId = null;
+  document.getElementById('rev-cmiel').value=''; document.getElementById('rev-ccria').value=''; document.getElementById('rev-coperc').value='';
+  document.getElementById('rev-alim').value=''; document.getElementById('rev-trat').value=''; document.getElementById('rev-obs').value='';
+  pendingPhotos.rev = []; renderPhotoPreview('rev'); renderExistingPhotos('rev', null); clearSegs();
+  document.getElementById('rev-form-title').textContent = 'Actuaciones';
+  document.getElementById('rev-save-btn').textContent = 'Guardar revisión';
+  document.getElementById('rev-cancel-btn').style.display = 'none';
+}
+
+// ---------- Extracciones ----------
+async function saveExtraccion(){
+  const hiveId = getSelectedHiveId('ext-hive-chips');
+  if(!hiveId){ showToast('Selecciona una colmena'); return; }
+  const payload = {
+    hiveId, fecha: document.getElementById('ext-fecha').value || todayISO(),
+    cuadros: document.getElementById('ext-cuadros').value, kg: document.getElementById('ext-kg').value,
+    humedad: document.getElementById('ext-humedad').value, notas: document.getElementById('ext-notas').value.trim()
+  };
+  let entryId;
+  if(editingExtId){
+    await api('/extractions/'+editingExtId, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    entryId = editingExtId;
+    showToast('Extracción actualizada ✓');
+  } else {
+    const res = await api('/extractions', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    entryId = res.id;
+    showToast('Extracción guardada ✓');
+  }
+  await uploadPhotos('ext', entryId, pendingPhotos.ext);
+  cancelExtractionEdit();
+  switchView('historial'); await loadAll();
+}
+
+function editExtraction(id){
+  const x = extractions.find(e=>e.id===id);
+  if(!x) return;
+  editingExtId = id;
+  extHiveSel = x.hiveId;
+  switchView('extraccion');
+  document.getElementById('ext-fecha').value = x.fecha || '';
+  document.getElementById('ext-cuadros').value = x.cuadros || '';
+  document.getElementById('ext-kg').value = x.kg || '';
+  document.getElementById('ext-humedad').value = x.humedad || '';
+  document.getElementById('ext-notas').value = x.notas || '';
+  document.getElementById('ext-form-title').textContent = 'Editar extracción';
+  document.getElementById('ext-save-btn').textContent = 'Guardar cambios';
+  document.getElementById('ext-cancel-btn').style.display = 'block';
+  pendingPhotos.ext = []; renderPhotoPreview('ext');
+  renderExistingPhotos('ext', id);
+}
+function cancelExtractionEdit(){
+  editingExtId = null;
+  document.getElementById('ext-cuadros').value=''; document.getElementById('ext-kg').value=''; document.getElementById('ext-humedad').value=''; document.getElementById('ext-notas').value='';
+  pendingPhotos.ext = []; renderPhotoPreview('ext'); renderExistingPhotos('ext', null);
+  document.getElementById('ext-form-title').textContent = 'Extracción de miel';
+  document.getElementById('ext-save-btn').textContent = 'Guardar extracción';
+  document.getElementById('ext-cancel-btn').style.display = 'none';
+}
+
+document.querySelectorAll('#swarm-capturado button').forEach(btn=>{
+  btn.onclick = ()=>{
+    document.querySelectorAll('#swarm-capturado button').forEach(b=>b.classList.remove('sel'));
+    btn.classList.add('sel');
+    document.getElementById('swarm-destino-wrap').style.display = btn.dataset.v==='Sí' ? 'block' : 'none';
+  };
+});
+
+async function saveSwarm(){
+  const origenSel = getSelectedHiveId('swarm-origen-chips');
+  if(!origenSel){ showToast('Indica de dónde viene el enjambre'); return; }
+  const capturadoBtn = document.querySelector('#swarm-capturado button.sel');
+  if(!capturadoBtn){ showToast('Indica si lo capturaste o se perdió'); return; }
+  const capturado = capturadoBtn.dataset.v;
+  const destinoSel = capturado==='Sí' ? getSelectedHiveId('swarm-destino-chips') : null;
+  const payload = {
+    fecha: document.getElementById('swarm-fecha').value || todayISO(),
+    origenHiveId: origenSel==='unknown' ? null : origenSel,
+    origenDesconocido: origenSel==='unknown',
+    capturado,
+    destinoHiveId: (destinoSel && destinoSel!=='none') ? destinoSel : null,
+    notas: document.getElementById('swarm-notas').value.trim()
+  };
+  if(editingSwarmId){
+    await api('/swarms/'+editingSwarmId, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    showToast('Enjambre actualizado ✓');
+  } else {
+    await api('/swarms', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    showToast('Enjambre guardado ✓');
+  }
+  cancelSwarmEdit();
+  switchView('historial'); await loadAll();
+}
+
+function editSwarm(id){
+  const s = swarms.find(x=>x.id===id);
+  if(!s) return;
+  editingSwarmId = id;
+  swarmOrigenSel = s.origenDesconocido ? 'unknown' : s.origenHiveId;
+  swarmDestinoSel = s.destinoHiveId || 'none';
+  switchView('enjambres');
+  document.getElementById('swarm-fecha').value = s.fecha || '';
+  document.querySelectorAll('#swarm-capturado button').forEach(b=>b.classList.toggle('sel', b.dataset.v===s.capturado));
+  document.getElementById('swarm-destino-wrap').style.display = s.capturado==='Sí' ? 'block' : 'none';
+  document.getElementById('swarm-notas').value = s.notas || '';
+  document.getElementById('swarm-form-title').textContent = 'Editar enjambre';
+  document.getElementById('swarm-save-btn').textContent = 'Guardar cambios';
+  document.getElementById('swarm-cancel-btn').style.display = 'block';
+}
+function cancelSwarmEdit(){
+  editingSwarmId = null;
+  swarmOrigenSel = null; swarmDestinoSel = null;
+  document.getElementById('swarm-notas').value = '';
+  document.querySelectorAll('#swarm-capturado button.sel').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('swarm-destino-wrap').style.display = 'none';
+  document.getElementById('swarm-form-title').textContent = 'Registrar enjambre';
+  document.getElementById('swarm-save-btn').textContent = 'Guardar enjambre';
+  document.getElementById('swarm-cancel-btn').style.display = 'none';
+}
+
+async function delEntry(type, id){
+  if(!confirm('¿Eliminar este registro?')) return;
+  const paths = {rev:'revisions', ext:'extractions', swarm:'swarms', note:'notes', queen:'queens'};
+  await api(`/${paths[type]}/${id}`, {method:'DELETE'});
+  await loadAll();
+}
+
+function hiveName(id){ const h = hives.find(x=>x.id===id); return h ? h.nombre : '(colmena eliminada)'; }
+function toggleGallery(key){ openGalleries[key] = !openGalleries[key]; renderHistory(); }
+
+function renderEntryHtml(i){
+  if(i.type==='note'){
+    const n = i.data;
+    return `<div class="entry note-entry">
+      <button class="del-entry" style="right:32px" onclick="openNoteModal('${n.id}')">✎</button>
+      <button class="del-entry" onclick="delEntry('note','${n.id}')">✕</button>
+      <div class="row"><b>📝 Nota</b><span>${n.fecha}</span></div>
+      <div class="meta">${n.texto}</div>
+    </div>`;
+  }
+  if(i.type==='queen'){
+    const q = i.data;
+    const qi = queenInfo(q.anio_reina);
+    return `<div class="entry note-entry" style="border-left-color:var(--amber-dark)">
+      <button class="del-entry" style="right:32px" onclick="openQueenModal(null,'${q.id}')">✎</button>
+      <button class="del-entry" onclick="delEntry('queen','${q.id}')">✕</button>
+      <div class="row"><b>👑 ${hiveName(q.hiveId)}</b><span>${q.fecha}</span></div>
+      <div class="meta">
+        Reina ${q.anio_reina||'—'}${qi ? ' · marcaje '+qi.color : ''} ${q.motivo ? '· Motivo: '+q.motivo : ''}
+        ${q.notas ? '<br><i>"'+q.notas+'"</i>' : ''}
+      </div>
+    </div>`;
+  }
+  const key = `${i.type}:${i.data.id}`;
+  const photos = photosMap[key] || [];
+  const galleryOpen = !!openGalleries[key];
+  const galleryHtml = galleryOpen ? `<div class="photo-gallery">${photos.map(p=>`
+    <div class="thumb" style="width:64px;height:64px;"><img src="${p.dataUrl}"><button class="rm" onclick="delPhoto('${p.id}','${i.type}','${i.data.id}')">✕</button></div>
+  `).join('')}</div>` : '';
+  const photoToggle = photos.length ? `<button class="photo-toggle" onclick="toggleGallery('${key}')">📷 ${photos.length} foto${photos.length>1?'s':''} ${galleryOpen?'▲':'▼'}</button>` : '';
+  const editFn = i.type==='rev' ? `editRevision('${i.data.id}')` : (i.type==='ext' ? `editExtraction('${i.data.id}')` : `editSwarm('${i.data.id}')`);
+  const delType = i.type==='rev' ? 'rev' : (i.type==='ext' ? 'ext' : 'swarm');
+
+  if(i.type==='rev'){
+    const r = i.data;
+    const badges = [];
+    if(r.plagas==='Sí') badges.push('<span class="badge bad">⚠ Plagas/Varroa</span>');
+    if(r.celdas_reales==='Sí') badges.push('<span class="badge bad">🐝 Riesgo de enjambrazón</span>');
+    if(r.estado) badges.push(`<span class="badge ${r.estado==='Mala'?'bad':(r.estado==='Excelente'?'good':'neutral')}">${r.estado}</span>`);
+    const cuadrosInfo = (r.cuadros_miel||r.cuadros_cria||r.cuadros_operculada) ?
+      `<br>Cuadros — miel: ${r.cuadros_miel||'—'} · cría: ${r.cuadros_cria||'—'} · operculada: ${r.cuadros_operculada||'—'}` : '';
+    return `<div class="entry">
+      <button class="del-entry" style="right:32px" onclick="${editFn}">✎</button>
+      <button class="del-entry" onclick="delEntry('${delType}','${r.id}')">✕</button>
+      <div class="row"><b>${hiveName(r.hiveId)}</b><span>${r.fecha}</span></div>
+      <div class="meta">
+        Panales: ${r.peina||'—'} · Postura: ${r.postura||'—'} · Cría: ${r.cria||'—'} · Población: ${r.poblacion||'—'}<br>
+        Reservas: ${r.reservas||'—'} · Polen: ${r.polen||'—'}${cuadrosInfo}
+        ${r.tratamiento ? '<br>Tratamiento: '+r.tratamiento : ''}
+        ${r.alimentacion ? '<br>Alimentación: '+r.alimentacion : ''}
+        ${r.observaciones ? '<br><i>"'+r.observaciones+'"</i>' : ''}
+      </div>
+      ${badges.join('')} ${photoToggle} ${galleryHtml}
+    </div>`;
+  } else if(i.type==='ext'){
+    const x = i.data;
+    return `<div class="entry extract">
+      <button class="del-entry" style="right:32px" onclick="${editFn}">✎</button>
+      <button class="del-entry" onclick="delEntry('${delType}','${x.id}')">✕</button>
+      <div class="row"><b>🍯 ${hiveName(x.hiveId)}</b><span>${x.fecha}</span></div>
+      <div class="meta">
+        Cuadros extraídos: <b>${x.cuadros||'—'}</b> · Miel: <b>${x.kg||'—'} kg</b> ${x.humedad?'· Humedad: '+x.humedad+'%':''}
+        ${x.notas ? '<br><i>"'+x.notas+'"</i>' : ''}
+      </div>
+      ${photoToggle} ${galleryHtml}
+    </div>`;
+  } else {
+    const s = i.data;
+    const origenText = s.origenDesconocido ? '❓ Desconocido/externo' : hiveName(s.origenHiveId);
+    const destinoText = s.destinoHiveId ? hiveName(s.destinoHiveId) : (s.capturado==='Sí' ? 'núcleo aún sin vincular' : null);
+    return `<div class="entry" style="border-left-color:${s.capturado==='Sí' ? 'var(--olive)' : 'var(--rust)'}">
+      <button class="del-entry" style="right:32px" onclick="${editFn}">✎</button>
+      <button class="del-entry" onclick="delEntry('${delType}','${s.id}')">✕</button>
+      <div class="row"><b>🐝 ${origenText}</b><span>${s.fecha}</span></div>
+      <div class="meta">
+        ${s.capturado==='Sí' ? `🎯 Capturado${destinoText ? ' → '+destinoText : ''}` : '💨 Se perdió'}
+        ${s.notas ? '<br><i>"'+s.notas+'"</i>' : ''}
+      </div>
+    </div>`;
+  }
+}
+
+let openGroups = {};
+function toggleGroup(key){ openGroups[key] = !openGroups[key]; }
+
+function renderGroup(year, type, icon, label, items, extra){
+  if(items.length===0) return '';
+  const key = `${year}:${type}`;
+  const isOpen = !!openGroups[key];
+  return `
+    <div class="group-header" onclick="toggleGroup('${key}'); renderHistory();">
+      <span>${icon} ${label} (${items.length})${extra ? ' · <b>'+extra+'</b>' : ''}</span>
+      <span class="chev">${isOpen ? '▲' : '▼'}</span>
+    </div>
+    ${isOpen ? items.map(renderEntryHtml).join('') : ''}
+  `;
+}
+
+function renderHistory(){
+  const el = document.getElementById('hist-list');
+  let items = [];
+  revisions.forEach(r=> items.push({type:'rev', date:r.fecha, data:r}));
+  extractions.forEach(x=> items.push({type:'ext', date:x.fecha, data:x}));
+  swarms.forEach(s=> items.push({type:'swarm', date:s.fecha, data:s}));
+  queens.forEach(q=> items.push({type:'queen', date:q.fecha, data:q}));
+  if(histHiveSel === 'all') notes.forEach(n=> items.push({type:'note', date:n.fecha, data:n}));
+  if(histHiveSel !== 'all') items = items.filter(i=> i.type==='swarm' ? (i.data.origenHiveId===histHiveSel || i.data.destinoHiveId===histHiveSel) : (i.type==='note' ? true : i.data.hiveId===histHiveSel));
+  if(histYearSel !== 'all') items = items.filter(i=>yearOf(i.date)===histYearSel);
+  items.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+
+  if(items.length===0){ el.innerHTML = '<div class="empty"><div class="hex-big">⬡</div>Sin registros todavía.</div>'; return; }
+
+  // Agrupar por temporada (año)
+  const groups = {};
+  items.forEach(i=>{ const y = yearOf(i.date); (groups[y] = groups[y] || []).push(i); });
+  const years = Object.keys(groups).sort().reverse();
+
+  el.innerHTML = years.map(y=>{
+    const yearItems = groups[y];
+    const totalKg = yearItems.filter(i=>i.type==='ext').reduce((s,i)=> s + (parseFloat(i.data.kg)||0), 0);
+    const numSwarms = yearItems.filter(i=>i.type==='swarm').length;
+    const numCaptured = yearItems.filter(i=>i.type==='swarm' && i.data.capturado==='Sí').length;
+
+    const notesGroup = renderGroup(y, 'note', '📝', 'Notas de temporada', yearItems.filter(i=>i.type==='note'));
+    const extGroup = renderGroup(y, 'ext', '🍯', 'Extracciones', yearItems.filter(i=>i.type==='ext'), totalKg > 0 ? `${totalKg.toFixed(1)} kg` : null);
+    const swarmGroup = renderGroup(y, 'swarm', '🐝', 'Enjambres', yearItems.filter(i=>i.type==='swarm'), numSwarms > 0 ? `${numCaptured} capturado${numCaptured==1?'':'s'}` : null);
+    const queenGroup = renderGroup(y, 'queen', '👑', 'Cambios de reina', yearItems.filter(i=>i.type==='queen'));
+    const revGroup = renderGroup(y, 'rev', '🔍', 'Revisiones', yearItems.filter(i=>i.type==='rev'));
+
+    return `<div class="year-group-title">🗓️ Temporada ${y}<div class="line"></div></div>
+      ${notesGroup}${extGroup}${swarmGroup}${queenGroup}${revGroup}`;
+  }).join('');
+}
+
+async function exportExcel(){
+  const revRows = revisions.map(r=>({
+    Colmena: hiveName(r.hiveId), Temporada: yearOf(r.fecha), Fecha: r.fecha, Panales: r.peina, Postura: r.postura,
+    Cría: r.cria, Población: r.poblacion, Reservas: r.reservas, Polen: r.polen, Plagas: r.plagas, Estado: r.estado,
+    'Cuadros miel': r.cuadros_miel, 'Cuadros cría': r.cuadros_cria, 'Cuadros operculada': r.cuadros_operculada,
+    Alimentación: r.alimentacion, Tratamiento: r.tratamiento, Observaciones: r.observaciones
+  })).sort((a,b)=> a.Colmena.localeCompare(b.Colmena) || (a.Fecha||'').localeCompare(b.Fecha||''));
+  const extRows = extractions.map(x=>({
+    Colmena: hiveName(x.hiveId), Temporada: yearOf(x.fecha), Fecha: x.fecha,
+    'Cuadros extraídos': x.cuadros, 'Kg miel': x.kg, 'Humedad %': x.humedad, Notas: x.notas
+  })).sort((a,b)=> a.Colmena.localeCompare(b.Colmena) || (a.Fecha||'').localeCompare(b.Fecha||''));
+  const swarmRows = swarms.map(s=>({
+    Temporada: yearOf(s.fecha), Fecha: s.fecha,
+    Origen: s.origenDesconocido ? 'Desconocido/externo' : hiveName(s.origenHiveId),
+    Resultado: s.capturado==='Sí' ? 'Capturado' : 'Perdido',
+    Destino: s.destinoHiveId ? hiveName(s.destinoHiveId) : '', Notas: s.notas
+  })).sort((a,b)=> (a.Fecha||'').localeCompare(b.Fecha||''));
+  const noteRows = notes.map(n=>({ Temporada: yearOf(n.fecha), Fecha: n.fecha, Nota: n.texto }))
+    .sort((a,b)=> (a.Fecha||'').localeCompare(b.Fecha||''));
+  const queenRows = queens.map(q=>{
+    const qi = queenInfo(q.anio_reina);
+    return {
+      Colmena: hiveName(q.hiveId), Temporada: yearOf(q.fecha), Fecha: q.fecha, 'Año reina': q.anio_reina,
+      'Color marcaje': qi ? qi.color : '', Motivo: q.motivo, Notas: q.notas
+    };
+  }).sort((a,b)=> a.Colmena.localeCompare(b.Colmena) || (a.Fecha||'').localeCompare(b.Fecha||''));
+  const hiveRows = hives.map(h=>{
+    const cq = currentQueen(h.id);
+    const qi = cq ? queenInfo(cq.anio_reina) : null;
+    return {
+      Nombre: h.nombre, Apiario: h.apiario, Ubicación: h.ubicacion, Alzas: h.alzas, 'Excluidor de reina': h.excluidor,
+      'Año reina actual': cq ? cq.anio_reina : '', 'Edad reina': qi ? qi.age : '', 'Color marcaje': qi ? qi.color : ''
+    };
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hiveRows), 'Colmenas');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(revRows), 'Revisiones');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(extRows), 'Extracciones');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(swarmRows), 'Enjambres');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(noteRows), 'Notas');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(queenRows), 'Reinas');
+  const base64 = XLSX.write(wb, {type:'base64', bookType:'xlsx'});
+  await saveAndShareBase64(base64, `Colmenar_Zeta_${todayISO()}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+}
+
+loadAll();
+switchView('colmenas');
+</script>
+</body>
+</html>
