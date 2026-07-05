@@ -1,0 +1,56 @@
+name: Compilar Colmenar Zeta (Android)
+
+# Se ejecuta solo:
+# - cada vez que subes cambios a la rama "main"
+# - o cuando lo lanzas manualmente desde la pestaña "Actions" en GitHub (botón "Run workflow")
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Preparar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Preparar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Generar el proyecto nativo de Android
+        run: npx cap add android
+
+      - name: Sincronizar (copiar la web y los plugins dentro del proyecto Android)
+        run: npx cap sync android
+
+      - name: Usar siempre la misma firma (para que las actualizaciones se instalen encima, sin perder datos)
+        run: |
+          mkdir -p ~/.android
+          cp debug.keystore ~/.android/debug.keystore
+
+      - name: Compilar el APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Guardar el APK como descarga
+        uses: actions/upload-artifact@v4
+        with:
+          name: ColmenarZeta-Android
+          path: android/app/build/outputs/apk/debug/app-debug.apk
