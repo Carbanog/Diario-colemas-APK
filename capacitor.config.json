@@ -1,0 +1,8 @@
+{
+  "appId": "es.dherediam.colmenarzeta",
+  "appName": "Colmenar Zeta",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
