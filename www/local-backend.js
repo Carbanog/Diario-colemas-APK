@@ -16,7 +16,16 @@
 let _db = null;
 let _SQL = null;
 const DB_FILENAME = 'colmenar.db';
-const { Filesystem, Directory } = (window.Capacitor && window.Capacitor.Plugins) || {};
+function getFilesystem(){
+  const c = window.Capacitor;
+  return (c && c.Plugins && c.Plugins.Filesystem) || null;
+}
+function getShare(){
+  const c = window.Capacitor;
+  return (c && c.Plugins && c.Plugins.Share) || null;
+}
+const DIR_DATA = 'DATA';
+const DIR_CACHE = 'CACHE';
 
 // ---------- Utilidades ----------
 function uid(prefix){ return prefix + '_' + Math.random().toString(16).slice(2, 12) + Date.now().toString(16).slice(-6); }
@@ -33,9 +42,10 @@ function blobToBase64(blob){
 
 // ---------- Arranque / persistencia ----------
 async function _loadDbFile(){
+  const Filesystem = getFilesystem();
   if(!Filesystem) return null; // en el navegador de pruebas, sin Capacitor, empieza vacío
   try{
-    const res = await Filesystem.readFile({ path: DB_FILENAME, directory: Directory.Data });
+    const res = await Filesystem.readFile({ path: DB_FILENAME, directory: DIR_DATA });
     const binary = atob(res.data);
     const bytes = new Uint8Array(binary.length);
     for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
@@ -46,12 +56,13 @@ async function _loadDbFile(){
 }
 
 async function _saveDbFile(){
-  if(!Filesystem) return;
+  const Filesystem = getFilesystem();
+  if(!Filesystem){ console.warn('Filesystem no disponible: no se pudo guardar en disco'); return; }
   const bytes = _db.export();
   let binary = '';
   for(let i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
   const base64 = btoa(binary);
-  await Filesystem.writeFile({ path: DB_FILENAME, directory: Directory.Data, data: base64 });
+  await Filesystem.writeFile({ path: DB_FILENAME, directory: DIR_DATA, data: base64 });
 }
 
 const SCHEMA = `
@@ -191,10 +202,11 @@ async function localBackupAndShare(){
 }
 
 async function saveAndShareBase64(base64, filename, mimeType){
-  const { Share } = (window.Capacitor && window.Capacitor.Plugins) || {};
+  const Filesystem = getFilesystem();
+  const Share = getShare();
   if(Filesystem && Share){
-    await Filesystem.writeFile({ path: filename, directory: Directory.Cache, data: base64 });
-    const uriResult = await Filesystem.getUri({ path: filename, directory: Directory.Cache });
+    await Filesystem.writeFile({ path: filename, directory: DIR_CACHE, data: base64 });
+    const uriResult = await Filesystem.getUri({ path: filename, directory: DIR_CACHE });
     await Share.share({ title: filename, url: uriResult.uri });
   } else {
     // Fallback para cuando se prueba en un navegador normal (sin Capacitor): descarga directa
