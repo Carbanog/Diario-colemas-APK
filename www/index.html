@@ -338,7 +338,12 @@
     <label style="margin-top:18px">Datos</label>
     <button class="export-btn" onclick="exportExcel()">⬇️ Exportar todo a Excel</button>
     <button class="export-btn" style="background:var(--amber-dark)" onclick="downloadBackup()">🗄️ Copia de seguridad completa (.zip)</button>
-    <div class="storage-note" style="margin-top:0">Los datos y las fotos viven en la carpeta "data", junto a este programa.</div>
+    <label class="photo-btn" style="width:100%; justify-content:center; box-sizing:border-box; margin-top:8px;">
+      ⬆️ Importar copia de seguridad
+      <input type="file" accept=".zip" style="display:none" onchange="handleImportFile(event)">
+    </label>
+    <div class="hint" style="margin-top:6px">Sustituye TODOS los datos actuales por los del archivo — no se pueden combinar, solo reemplazar. Si el archivo viene de una versión distinta a esta (servidor ↔ móvil), las fotos no se recuperarán, solo el resto de datos.</div>
+    <div class="storage-note" style="margin-top:0">Los datos y las fotos viven dentro de la propia app, en este teléfono.</div>
     <button class="btn-secondary" onclick="closeSettingsModal()">Cerrar</button>
   </div>
 </div>
@@ -417,6 +422,34 @@ async function saveAppName(){
   appName = nombre;
   applyAppName();
   showToast('Nombre actualizado ✓');
+}
+
+async function handleImportFile(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  if(!confirm('Esto va a SUSTITUIR todos los datos actuales por los del archivo. No se puede deshacer. ¿Continuar?')){
+    event.target.value = '';
+    return;
+  }
+  try{
+    if(window.Capacitor){
+      await localImportBackup(file);
+    } else {
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let binary = '';
+      for(let i=0;i<bytes.length;i++) binary += String.fromCharCode(bytes[i]);
+      const base64 = btoa(binary);
+      const res = await api('/backup/import', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({data: base64})});
+      if(res && res.error){ showToast('Error: ' + res.error); event.target.value=''; return; }
+    }
+    showToast('Datos importados ✓');
+    closeSettingsModal();
+    await loadAll();
+  }catch(e){
+    showToast('No se pudo importar el archivo');
+  }
+  event.target.value = '';
 }
 
 function useMyLocation(){

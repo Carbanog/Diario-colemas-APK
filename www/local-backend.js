@@ -419,5 +419,17 @@ async function localApi(path, opts){
   }
 }
 
+async function localImportBackup(file){
+  await _readyPromise;
+  const buf = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(buf);
+  const dbEntry = zip.file('colmenar.db');
+  if(!dbEntry) throw new Error('El archivo no parece una copia de seguridad válida');
+  const bytes = await dbEntry.async('uint8array');
+  _db.close();
+  _db = new _SQL.Database(bytes);
+  await _saveDbFile();
+}
+
 // Arranque automático en cuanto se carga la página
 let _readyPromise = initLocalDb().catch(e => console.error('No se pudo iniciar la base de datos local', e));
