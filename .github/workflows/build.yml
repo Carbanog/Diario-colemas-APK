@@ -35,6 +35,9 @@ jobs:
       - name: Generar el proyecto nativo de Android
         run: npx cap add android
 
+      - name: Generar los iconos de la app a partir de assets/
+        run: npx capacitor-assets generate --android
+
       - name: Sincronizar (copiar la web y los plugins dentro del proyecto Android)
         run: npx cap sync android
 
