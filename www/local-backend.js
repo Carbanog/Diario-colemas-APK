@@ -193,12 +193,34 @@ async function getWeatherSeason(year){
 // ---------- Backup ----------
 async function localBackupAndShare(){
   await _readyPromise;
+  const payload = {
+    formatVersion: 1,
+    exportedAt: nowIso(),
+    settings: null,
+    hives: all(`SELECT * FROM hives`),
+    revisions: all(`SELECT * FROM revisions`),
+    extractions: all(`SELECT * FROM extractions`),
+    swarms: all(`SELECT * FROM swarms`),
+    notes: all(`SELECT * FROM notes`),
+    queens: all(`SELECT * FROM queen_changes`),
+    photos: [],
+  };
+  const settingsRow = one(`SELECT * FROM settings WHERE id=1`);
+  if(settingsRow) payload.settings = { nombre: settingsRow.nombre, lat: settingsRow.lat, lon: settingsRow.lon };
+
   const zip = new JSZip();
-  const bytes = _db.export();
-  zip.file('colmenar.db', bytes);
-  const blob = await zip.generateAsync({ type: 'base64' });
+  const photosFolder = zip.folder('photos');
+  all(`SELECT * FROM photos`).forEach(p=>{
+    const fileName = `${p.id}.jpg`;
+    const base64Data = (p.content || '').split(',')[1] || '';
+    photosFolder.file(fileName, base64Data, { base64: true });
+    payload.photos.push({ id: p.id, entryType: p.entry_type, entryId: p.entry_id, file: fileName });
+  });
+  zip.file('data.json', JSON.stringify(payload));
+
+  const zipBase64 = await zip.generateAsync({ type: 'base64' });
   const ts = new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
-  await saveAndShareBase64(blob, `colmenar_backup_${ts}.zip`, 'application/zip');
+  await saveAndShareBase64(zipBase64, `colmenar_backup_${ts}.zip`, 'application/zip');
 }
 
 async function saveAndShareBase64(base64, filename, mimeType){
@@ -423,6 +445,61 @@ async function localImportBackup(file){
   await _readyPromise;
   const buf = await file.arrayBuffer();
   const zip = await JSZip.loadAsync(buf);
+  const dataJsonEntry = zip.file('data.json');
+
+  if(dataJsonEntry){
+    // ---- Formato unificado (servidor <-> móvil) ----
+    const payload = JSON.parse(await dataJsonEntry.async('string'));
+
+    ['photos','hives','revisions','extractions','swarms','notes','queen_changes'].forEach(t=> run(`DELETE FROM ${t}`));
+
+    (payload.hives||[]).forEach(h=> run(
+      `INSERT INTO hives (id, nombre, apiario, ubicacion, alzas, excluidor, created_at) VALUES (?,?,?,?,?,?,?)`,
+      [h.id, h.nombre, h.apiario, h.ubicacion, h.alzas, h.excluidor, h.created_at]));
+
+    (payload.revisions||[]).forEach(r=> run(
+      `INSERT INTO revisions (id, hive_id, fecha, clima, peina, postura, cria, poblacion, reservas, polen,
+       plagas, estado, alimentacion, tratamiento, observaciones, cuadros_miel, cuadros_cria, cuadros_operculada, celdas_reales, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [r.id, r.hive_id, r.fecha, r.clima, r.peina, r.postura, r.cria, r.poblacion, r.reservas, r.polen,
+       r.plagas, r.estado, r.alimentacion, r.tratamiento, r.observaciones, r.cuadros_miel, r.cuadros_cria, r.cuadros_operculada, r.celdas_reales, r.created_at]));
+
+    (payload.extractions||[]).forEach(x=> run(
+      `INSERT INTO extractions (id, hive_id, fecha, cuadros, kg, humedad, notas, created_at) VALUES (?,?,?,?,?,?,?,?)`,
+      [x.id, x.hive_id, x.fecha, x.cuadros, x.kg, x.humedad, x.notas, x.created_at]));
+
+    (payload.swarms||[]).forEach(s=> run(
+      `INSERT INTO swarms (id, fecha, origen_hive_id, origen_desconocido, capturado, destino_hive_id, notas, created_at) VALUES (?,?,?,?,?,?,?,?)`,
+      [s.id, s.fecha, s.origen_hive_id, s.origen_desconocido, s.capturado, s.destino_hive_id, s.notas, s.created_at]));
+
+    (payload.notes||[]).forEach(n=> run(
+      `INSERT INTO notes (id, fecha, texto, created_at) VALUES (?,?,?,?)`, [n.id, n.fecha, n.texto, n.created_at]));
+
+    (payload.queens||[]).forEach(q=> run(
+      `INSERT INTO queen_changes (id, hive_id, fecha, anio_reina, motivo, notas, created_at) VALUES (?,?,?,?,?,?,?)`,
+      [q.id, q.hive_id, q.fecha, q.anio_reina, q.motivo, q.notas, q.created_at]));
+
+    for(const p of (payload.photos||[])){
+      const entry = zip.file(`photos/${p.file}`);
+      if(entry){
+        const base64Content = await entry.async('base64');
+        run(`INSERT INTO photos (id, entry_type, entry_id, content, created_at) VALUES (?,?,?,?,?)`,
+          [p.id, p.entryType, p.entryId, `data:image/jpeg;base64,${base64Content}`, nowIso()]);
+      }
+    }
+
+    if(payload.settings){
+      run(`INSERT INTO settings (id, lat, lon, nombre, updated_at) VALUES (1,?,?,?,?)
+           ON CONFLICT(id) DO UPDATE SET lat=excluded.lat, lon=excluded.lon, nombre=excluded.nombre, updated_at=excluded.updated_at`,
+        [payload.settings.lat, payload.settings.lon, payload.settings.nombre, nowIso()]);
+      run(`DELETE FROM weather_days`);
+    }
+
+    await _saveDbFile();
+    return;
+  }
+
+  // ---- Compatibilidad con copias antiguas exclusivas de Android (solo colmenar.db) ----
   const dbEntry = zip.file('colmenar.db');
   if(!dbEntry) throw new Error('El archivo no parece una copia de seguridad válida');
   const bytes = await dbEntry.async('uint8array');
